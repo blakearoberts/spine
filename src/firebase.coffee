@@ -4,61 +4,26 @@ $     = Spine.$
 class Firebase extends Spine.Controller
   constructor: (params) ->
     super
-    @bind('authStateChange', @authStateChange)
 
   initFirebase: (config) ->
     ctr = @
     firebase.initializeApp(config)
-    ui = new firebaseui.auth.AuthUI(firebase.auth())
-    ui.start('#firebaseui-auth-container', {
-      signInOptions: [
-        firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-        firebase.auth.FacebookAuthProvider.PROVIDER_ID,
-        firebase.auth.TwitterAuthProvider.PROVIDER_ID,
-        firebase.auth.GithubAuthProvider.PROVIDER_ID
-      ]
-    })
     firebase.auth().onAuthStateChanged ((userParams) ->
       ctr.log('firebase auth state change', userParams)
       if userParams
         userParams.getToken().then (accessToken) ->
           userParams['accessToken'] = accessToken
-          Spine.Firebase.User.signIn(userParams).done (data) ->
-            ctr.log('spine user signin', data)
-            ctr.trigger('authStateChange')
+          ctr.appUser = new User(userParams)
+          ctr.trigger('firebaseAuthChange')
     ), (error) ->
       ctr.log('auth error', error)
 
-  authStateChange: ->
-    console.log('auth state change triggered')
-
-  onAuthStateChanged: ->
-    ctr = @
+  @firebaseSignOut: =>
     deferred = $.Deferred()
     promise  = deferred.promise()
-    firebase.auth().onAuthStateChanged ((userParams) ->
-      ctr.log('firebase auth state change', userParams)
-      if userParams
-        userParams.getToken().then (accessToken) ->
-          userParams['accessToken'] = accessToken
-          Spine.Firebase.User.signIn(userParams).done (data) ->
-            ctr.log('spine user signin', data)
-            deferred.resolve(data)
-      else deferred.reject()
-    ), (error) ->
-      ctr.log('auth error', error)
-      deferred.reject()
-    promise
-
-  @signOut: =>
-    deferred = $.Deferred()
-    promise  = deferred.promise()
-    resolve  = (data) ->
-      if data then deferred.resolve(data)
-      else deferred.reject(data)
     firebase.auth().signOut().then =>
-      if @user then delete @user
-      resolve()
+      if @appUser then delete @appUser
+      deffered.resolve()
     promise
 
 Model =
@@ -89,22 +54,15 @@ Model =
       deferred.resolve(data)
     promise
 
-class User extends Spine.Model
-  @configure 'User',
-    'displayName',
-    'email',
-    'accessToken'
-
-  @ref = '/users/'
-
-  @signIn: (params) ->
-    userPath = params.email.replace(/([.@])/g, '-')
-    deferred = $.Deferred()
-    promise  = deferred.promise()
-    firebase.database().ref(User.ref + userPath).once('value').then (data) ->
-      if data then deferred.resolve(data)
-      else deferred.reject(data)
-    promise
+class User
+  constructor: (params) ->
+    @displayName   = params.displayName
+    @email         = params.email
+    @emailVerified = params.emailVerified
+    @photoURL      = params.photoURL
+    @isAnonymous   = params.isAnonymous
+    @uid           = params.uid
+    @accessToken   = params.accessToken
 
 Firebase.Model  = Model
 Firebase.User   = User
