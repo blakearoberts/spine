@@ -10,20 +10,25 @@ class Firebase extends Spine.Controller
     firebase.initializeApp(config)
     firebase.auth().onAuthStateChanged ((userParams) ->
       ctr.log('firebase auth state change', userParams)
-      if userParams
+      unless userParams
+        ctr.trigger('firebaseAuthToggle')
+        ctr.trigger('firebaseAuthOut')
+      else
         userParams.getToken().then (accessToken) ->
           userParams['accessToken'] = accessToken
           ctr.appUser = new User(userParams)
-          ctr.trigger('firebaseAuthChange')
+          ctr.trigger('firebaseAuthToggle')
+          ctr.trigger('firebaseAuthIn')
     ), (error) ->
       ctr.log('auth error', error)
 
-  @firebaseSignOut: =>
-    deferred = $.Deferred()
+  @firebaseSignOut: ->
+    ctr = @
+    jq_deferred = $.Deferred()
     promise  = deferred.promise()
-    firebase.auth().signOut().then =>
-      if @appUser then delete @appUser
-      deffered.resolve()
+    firebase.auth().signOut().then ->
+      if ctr.appUser then delete ctr.appUser
+      jq_deffered.resolve()
     promise
 
 Model =
@@ -32,24 +37,26 @@ Model =
       return
     @change @saveFirebase
     @fetch @loadFirebase
-    @startLoadListener() if @listenToFirebase
+    @fetchOnce @loadFirebaseOnce
 
   saveFirebase: ->
     result = JSON.parse(JSON.stringify(@))
     firebase.database().ref(@ref + result[0].id).set(result[0])
 
-  startLoadListener: ->
+  loadFirebase: (options = {}) ->
     firebase.database().ref(@ref + @id).on 'value', (data) =>
       @refresh(data.val() or [], options)
 
-  loadFirebase: (options = {}) ->
+  loadFirebaseOnce: (options = {}) ->
     options.clear = true unless options.hasOwnProperty('clear')
     deferred = $.Deferred()
     promise  = deferred.promise()
     unless firebase.auth().currentUser
       deferred.reject()
       return promise
-    firebase.database().ref(@ref).once('value').then (data) =>
+    unless options.ref
+      options.ref = @ref
+    firebase.database().ref(options.ref).once('value').then (data) =>
       @refresh(data.val() or [], options)
       deferred.resolve(data)
     promise
