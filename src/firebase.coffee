@@ -37,7 +37,6 @@ Model =
       return
     @change @saveFirebase
     @fetch @loadFirebase
-    @fetchOnce @loadFirebaseOnce
 
   saveFirebase: ->
     result = JSON.parse(JSON.stringify(@))
@@ -47,7 +46,7 @@ Model =
     firebase.database().ref(@ref + @id).on 'value', (data) =>
       @refresh(data.val() or [], options)
 
-  loadFirebaseOnce: (options = {}) ->
+  fetchOnce: (options = {}) ->
     options.clear = true unless options.hasOwnProperty('clear')
     deferred = $.Deferred()
     promise  = deferred.promise()
