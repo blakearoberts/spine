@@ -35,7 +35,6 @@ Model =
   extended: ->
     unless firebase
       return
-    @fbref = firebase.database().ref(@ref)
 
   save: ->
     deferred = $.Deferred()
