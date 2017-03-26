@@ -39,24 +39,6 @@ Model =
       error('Please add variable \'ref\' to a Spine.Firebase.Model')
       return
 
-  update: (record = {}, options = {}) ->
-    unless @fbref
-      @fbref = firebase.database().ref(@ref)
-    u_deferred = $.Deferred()
-    promise  = u_deferred.promise()
-    if record.id
-      @fbref.child(record.id).update(record.attributes()).then ->
-        console.log('firebase update record', record.attributes())
-        u_deferred?.resolve()
-    else
-      updates = {}
-      for obj in @all()
-        updates[obj.id] = obj.attributes()
-      @fbref.update(updates).then ->
-        console.log('firebase update', updates)
-        u_deferred?.resolve()
-    promise
-
   load: (options = {}) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
@@ -95,6 +77,39 @@ Model =
 
   off: ->
     @fbref?.off()
+
+  update: (record = {}, options = {}) ->
+    unless @fbref
+      @fbref = firebase.database().ref(@ref)
+    u_deferred = $.Deferred()
+    promise  = u_deferred.promise()
+    if record.id
+      @fbref.child(record.id).update(record.attributes()).then ->
+        console.log('firebase update record', record.attributes())
+        u_deferred?.resolve()
+    else
+      updates = {}
+      for obj in @all()
+        updates[obj.id] = obj.attributes()
+      @fbref.update(updates).then ->
+        console.log('firebase update', updates)
+        u_deferred?.resolve()
+    promise
+
+  delete: (record = {}, options = {}) ->
+    unless @fbref
+      @fbref = firebase.database().ref(@ref)
+    d_deferred = $.Deferred()
+    promise  = d_deferred.promise()
+    if record.id
+      @fbref.child(record.id).update(null).then ->
+        console.log('firebase delete record', record.attributes())
+        d_deferred?.resolve()
+    else
+      @fbref.update(null).then ->
+        console.log('firebase delete all')
+        d_deferred?.resolve()
+    promise
 
 class User
   constructor: (params) ->
