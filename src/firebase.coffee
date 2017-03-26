@@ -9,7 +9,6 @@ class Firebase extends Spine.Controller
     ctr = @
     firebase.initializeApp(config)
     firebase.auth().onAuthStateChanged ((userParams) ->
-      ctr.log('firebase auth state change', userParams)
       unless userParams
         ctr.trigger('firebaseAuthToggle')
         ctr.trigger('firebaseAuthOut')
