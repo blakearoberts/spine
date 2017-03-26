@@ -23,11 +23,10 @@ class Firebase extends Spine.Controller
   @signOut: ->
     unless firebase.auth().currentUser
       return
-    ctr = @
     s_deferred = $.Deferred()
     promise  = s_deferred.promise()
-    firebase.auth().signOut().then ->
-      if ctr.appUser then delete ctr.appUser
+    firebase.auth().signOut().then =>
+      if @appUser then delete @appUser
       s_deffered.resolve()
     promise
 
@@ -53,7 +52,7 @@ Model =
     else
       @fbref.on 'value', (data) =>
         @refresh(data.val() or [], options)
-        l_deferred?.resolve(data.val())
+        l_deferred.resolve(data.val())
         console.log('firebase load', data.val())
     promise
 
@@ -66,12 +65,12 @@ Model =
     if options.child
       @fbref.child(options.child).once 'value', (data) =>
         @refresh(data.val() or [], options)
-        l_deferred?.resolve(data.val())
+        l_deferred.resolve(data.val())
         console.log('firebase load', data.val())
     else
       @fbref.once 'value', (data) =>
         @refresh(data.val() or [], options)
-        l_deferred?.resolve(data.val())
+        l_deferred.resolve(data.val())
         console.log('firebase load', data.val())
     promise
 
