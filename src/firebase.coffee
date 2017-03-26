@@ -27,7 +27,20 @@ class Firebase extends Spine.Controller
     promise  = s_deferred.promise()
     firebase.auth().signOut().then =>
       if @appUser then delete @appUser
-      s_deffered.resolve()
+      s_deferred.resolve()
+    promise
+
+  @deleteUser: ->
+    unless firebase.auth().currentUser
+      return
+    d_deferred = $.Deferred()
+    promise  = d_deferred.promise()
+    firebase.auth().currentUser.delete()
+    .then =>
+      if @appUser then delete @appUser
+      d_deferred.resolve()
+    .catch (error) ->
+      d_deferred.reject(error)
     promise
 
 Model =
@@ -35,7 +48,7 @@ Model =
     unless firebase
       return
     unless @ref
-      error('Please add variable \'ref\' to a Spine.Firebase.Model')
+      error('Please add variable \'ref\' to this Spine.Firebase.Model')
       return
 
   load: (options = {}) ->
@@ -85,14 +98,14 @@ Model =
     if record.id
       @fbref.child(record.id).update(record.attributes()).then ->
         console.log('firebase update record', record.attributes())
-        u_deferred?.resolve()
+        u_deferred.resolve()
     else
       updates = {}
       for obj in @all()
         updates[obj.id] = obj.attributes()
       @fbref.update(updates).then ->
         console.log('firebase update', updates)
-        u_deferred?.resolve()
+        u_deferred.resolve()
     promise
 
   delete: (record = {}, options = {}) ->
@@ -101,13 +114,21 @@ Model =
     d_deferred = $.Deferred()
     promise  = d_deferred.promise()
     if record.id
-      @fbref.child(record.id).update(null).then ->
-        console.log('firebase delete record', record.attributes())
-        d_deferred?.resolve()
+      @fbref.child(record.id).remove()
+      .then ->
+        console.log('firebase delete record')
+        d_deferred.resolve()
+      .catch (error) ->
+        console.log('firebase delete record error', error)
+        d_deferred.reject(error)
     else
-      @fbref.update(null).then ->
+      @fbref.remove()
+      .then ->
         console.log('firebase delete all')
-        d_deferred?.resolve()
+        d_deferred.resolve()
+      .catch (error) ->
+        console.log('firebase delete error', error)
+        d_deferred.reject(error)
     promise
 
 class User
