@@ -22,7 +22,7 @@ class Firebase extends Spine.Controller
     ), (error) ->
       ctr.log('auth error', error)
 
-  @firebaseSignOut: ->
+  @signOut: ->
     ctr = @
     jq_deferred = $.Deferred()
     promise  = deferred.promise()
@@ -35,14 +35,42 @@ Model =
   extended: ->
     unless firebase
       return
-    @change @saveFirebase
-    @fetch @loadFirebase
+    @fbref = firebase.database().ref(@ref)
+
+  save: ->
+    deferred = $.Deferred()
+    promise  = deferred.promise()
+    unless @fbref
+      @fbref = firebase.database().ref(@ref)
+    @fbref.child(@id).update(@).done ->
+      deferred.resolve()
+      console.log('save', @)
+    promise
+
+  load: ->
+    deferred = $.Deferred()
+    promise  = deferred.promise()
+    unless @fbref
+      @fbref = firebase.database().ref(@ref)
+    @fbref.on 'value', (data) =>
+      @refresh(data.val() or [], options)
+      deferred.resolve(data.val())
+      console.log('load', data.val())
+    promise
+
+  off: ->
+    if @fbref
+      @fbref.off()
 
   saveFirebase: ->
     result = JSON.parse(JSON.stringify(@))
-    firebase.database().ref(@ref + result[0].id).set(result[0])
+    deferred = $.Deferred()
+    promise  = deferred.promise()
+    firebase.database().ref(@ref + result[0].id).set(result[0]).then (data) ->
+      console.log(data)
 
   loadFirebase: (options = {}) ->
+
     firebase.database().ref(@ref + @id).on 'value', (data) =>
       @refresh(data.val() or [], options)
 
@@ -57,7 +85,7 @@ Model =
       options.ref = @ref
     firebase.database().ref(options.ref).once('value').then (data) =>
       @refresh(data.val() or [], options)
-      deferred.resolve(data)
+      deferred.resolve(data.val())
     promise
 
 class User
