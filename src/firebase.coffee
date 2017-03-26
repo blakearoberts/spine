@@ -37,29 +37,28 @@ Model =
       return
 
   save: ->
-    deferred = $.Deferred()
-    promise  = deferred.promise()
+    s_deferred = $.Deferred()
+    promise  = s_deferred.promise()
     unless @fbref
       @fbref = firebase.database().ref(@ref)
     @fbref.child(@id).update(@).done ->
-      deferred.resolve()
+      s_deferred?.resolve()
       console.log('save', @)
     promise
 
-  load: ->
-    deferred = $.Deferred()
-    promise  = deferred.promise()
+  load: (options = {})->
+    l_deferred = $.Deferred()
+    promise  = l_deferred.promise()
     unless @fbref
       @fbref = firebase.database().ref(@ref)
     @fbref.on 'value', (data) =>
       @refresh(data.val() or [], options)
-      deferred.resolve(data.val())
+      l_deferred?.resolve(data.val())
       console.log('load', data.val())
     promise
 
   off: ->
-    if @fbref
-      @fbref.off()
+    @fbref?.off()
 
   saveFirebase: ->
     result = JSON.parse(JSON.stringify(@))
