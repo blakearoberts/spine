@@ -24,11 +24,11 @@ class Firebase extends Spine.Controller
     unless firebase.auth().currentUser
       return
     ctr = @
-    jq_deferred = $.Deferred()
-    promise  = deferred.promise()
+    s_deferred = $.Deferred()
+    promise  = s_deferred.promise()
     firebase.auth().signOut().then ->
       if ctr.appUser then delete ctr.appUser
-      jq_deffered.resolve()
+      s_deffered.resolve()
     promise
 
 Model =
@@ -39,26 +39,40 @@ Model =
       error('Please add variable \'ref\' to a Spine.Firebase.Model')
       return
 
-  update: ->
+  update: (record = {}, options = {}) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
     u_deferred = $.Deferred()
     promise  = u_deferred.promise()
-    @fbref.child(@id).update(@attributes()).done ->
-      console.log('firebase update', @attributes())
-      u_deferred?.resolve()
+    if record.id
+      @fbref.child(record.id).update(record.attributes()).then ->
+        console.log('firebase update record', record.attributes())
+        u_deferred?.resolve()
+    else
+      updates = {}
+      for obj in @all()
+        updates[obj.id] = obj.attributes()
+      @fbref.update(updates).then ->
+        console.log('firebase update', updates)
+        u_deferred?.resolve()
     promise
 
-  load: (options = {})->
+  load: (options = {}) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
     options.clear = true unless options.hasOwnProperty('clear')
     l_deferred = $.Deferred()
     promise  = l_deferred.promise()
-    @fbref.on 'value', (data) =>
-      @refresh(data.val() or [], options)
-      l_deferred?.resolve(data.val())
-      console.log('firebase load', data.val())
+    if options?.child
+      @fbref.child(options.child).on 'value', (data) =>
+        @refresh(data.val() or [], options)
+        l_deferred.resolve(data.val())
+        console.log('firebase load', data.val())
+    else
+      @fbref.on 'value', (data) =>
+        @refresh(data.val() or [], options)
+        l_deferred?.resolve(data.val())
+        console.log('firebase load', data.val())
     promise
 
   loadOnce: (options = {}) ->
@@ -67,10 +81,16 @@ Model =
     options.clear = true unless options.hasOwnProperty('clear')
     l_deferred = $.Deferred()
     promise  = l_deferred.promise()
-    @fbref.once 'value', (data) =>
-      @refresh(data.val() or [], options)
-      l_deferred?.resolve(data.val())
-      console.log('firebase load', data.val())
+    if options.child
+      @fbref.child(options.child).once 'value', (data) =>
+        @refresh(data.val() or [], options)
+        l_deferred?.resolve(data.val())
+        console.log('firebase load', data.val())
+    else
+      @fbref.once 'value', (data) =>
+        @refresh(data.val() or [], options)
+        l_deferred?.resolve(data.val())
+        console.log('firebase load', data.val())
     promise
 
   off: ->
