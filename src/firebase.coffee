@@ -18,7 +18,7 @@ class Firebase extends Spine.Controller
           ctr.trigger('firebaseAuthIn')
       ctr.trigger('firebaseAuthToggle')
     ), (error) ->
-      ctr.log('auth error', error)
+      ctr.log('firebase auth error', error)
 
   @signOut: ->
     unless firebase.auth().currentUser
@@ -58,18 +58,20 @@ Model =
     l_deferred = $.Deferred()
     promise  = l_deferred.promise()
     if options?.child
-      @fbref.child(options.child).on 'value', (data) =>
-        @refresh(data.val() or [], options)
-        l_deferred.resolve(data.val())
-        console.log('firebase load', data.val())
-    else
-      @fbref.on 'value', (data) =>
-        records = []
-        data.forEach (child) ->
+      @fbref = @fbref.child(options.child)
+    @fbref.on 'value', (data) =>
+      records = []
+      data.forEach (child) ->
+        if options?.where
+          for key, value of options.where
+            if child.val()[key][value]
+              records.push(child.val())
+        else
           records.push(child.val())
-        @refresh(records or [], options)
-        l_deferred.resolve(records)
-        console.log('firebase load', records)
+        false # must return false or enumeration will stop after first child
+      @refresh(records or [], options)
+      l_deferred.resolve(records)
+      console.log('firebase load', records)
     promise
 
   loadOnce: (options = {}) ->
@@ -79,15 +81,20 @@ Model =
     l_deferred = $.Deferred()
     promise  = l_deferred.promise()
     if options.child
-      @fbref.child(options.child).once 'value', (data) =>
-        @refresh(data.val() or [], options)
-        l_deferred.resolve(data.val())
-        console.log('firebase load', data.val())
-    else
-      @fbref.once 'value', (data) =>
-        @refresh(data.val() or [], options)
-        l_deferred.resolve(data.val())
-        console.log('firebase load', data.val())
+      @fbref = @fbref.child(options.child)
+    @fbref.once 'value', (data) =>
+      records = []
+      data.forEach (child) ->
+        if options?.where
+          for key, value of options.where
+            if child.val()[key][value]
+              records.push(child.val())
+        else
+          records.push(child.val())
+        false # must return false or enumeration will stop after first child
+      @refresh(records or [], options)
+      l_deferred.resolve(records)
+      console.log('firebase load once', records)
     promise
 
   off: ->
@@ -101,6 +108,7 @@ Model =
     recordRef = @fbref.push()
     record.id = recordRef.key
     recordRef.set(record.attributes()).then ->
+      console.log('firebase push', record.attributes())
       p_deferred.resolve(record)
     promise
 
@@ -141,7 +149,7 @@ Model =
         console.log('firebase delete all')
         d_deferred.resolve()
       .catch (error) ->
-        console.log('firebase delete error', error)
+        console.log('firebase delete all error', error)
         d_deferred.reject(error)
     promise
 
