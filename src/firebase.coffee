@@ -64,9 +64,12 @@ Model =
         console.log('firebase load', data.val())
     else
       @fbref.on 'value', (data) =>
-        @refresh(data.val() or [], options)
-        l_deferred.resolve(data.val())
-        console.log('firebase load', data.val())
+        records = []
+        data.forEach (child) ->
+          records.push(child.val())
+        @refresh(records or [], options)
+        l_deferred.resolve(records)
+        console.log('firebase load', records)
     promise
 
   loadOnce: (options = {}) ->
@@ -89,6 +92,17 @@ Model =
 
   off: ->
     @fbref?.off()
+
+  push: (record) =>
+    unless @fbref
+      @fbref = firebase.database().ref(@ref)
+    p_deferred = $.Deferred()
+    promise  = p_deferred.promise()
+    recordRef = @fbref.push()
+    record.id = recordRef.key
+    recordRef.set(record.attributes()).then ->
+      p_deferred.resolve(record)
+    promise
 
   update: (record = {}, options = {}) ->
     unless @fbref
