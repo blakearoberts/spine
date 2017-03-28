@@ -51,54 +51,57 @@ Model =
       error('Please add variable \'ref\' to this Spine.Firebase.Model')
       return
 
-  load: (options = {}) ->
+  fetch: (options = {}) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
+      if options?.child then @fbref = @fbref.child(options.child)
     options.clear = true unless options.hasOwnProperty('clear')
     l_deferred = $.Deferred()
     promise  = l_deferred.promise()
-    if options?.child
-      @fbref = @fbref.child(options.child)
     @fbref.on 'value', (data) =>
       records = []
-      data.forEach (child) ->
-        if options?.where
-          for key, value of options.where
-            if child.val()[key][value]
-              records.push(child.val())
-        else
-          records.push(child.val())
+      if options?.child
+        records.push(data.val())
+      else
+        data.forEach (child) ->
+          if options?.where
+            for key, value of options.where
+              if child.val()[key][value]
+                records.push(child.val())
+          else records.push(child.val())
         false # must return false or enumeration will stop after first child
       @refresh(records or [], options)
       l_deferred.resolve(records)
-      console.log('firebase load', records)
+      console.log('firebase fetch', records)
     promise
 
-  loadOnce: (options = {}) ->
-    unless @fbref
-      @fbref = firebase.database().ref(@ref)
+  fetchOnce: (options = {}) ->
+    @fbref = firebase.database().ref(@ref)
+    if options?.child then @fbref = @fbref.child(options.child)
     options.clear = true unless options.hasOwnProperty('clear')
     l_deferred = $.Deferred()
     promise  = l_deferred.promise()
-    if options.child
-      @fbref = @fbref.child(options.child)
     @fbref.once 'value', (data) =>
       records = []
-      data.forEach (child) ->
-        if options?.where
-          for key, value of options.where
-            if child.val()[key][value]
-              records.push(child.val())
-        else
-          records.push(child.val())
+      if options?.child
+        records.push(data.val())
+      else
+        data.forEach (child) ->
+          if options?.where
+            for key, value of options.where
+              if child.val()[key][value]
+                records.push(child.val())
+          else records.push(child.val())
         false # must return false or enumeration will stop after first child
       @refresh(records or [], options)
       l_deferred.resolve(records)
-      console.log('firebase load once', records)
+      console.log('firebase fetch once', records)
     promise
 
-  off: ->
-    @fbref?.off()
+  off: =>
+    if @fbref
+      @fbref.off()
+      delete @fbref
 
   push: (record) =>
     unless @fbref
@@ -115,42 +118,51 @@ Model =
   update: (record = {}, options = {}) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
+      if options?.child then @fbref = @fbref.child(options.child)
     u_deferred = $.Deferred()
     promise  = u_deferred.promise()
-    if record.id
-      @fbref.child(record.id).update(record.attributes()).then ->
-        console.log('firebase update record', record.attributes())
-        u_deferred.resolve()
+    # setting ref depending on if model is a singleton and if record was passed
+    tempRef = @fbref
+    if not options?.child and record?.id
+      tempRef = @fbref.child(record.id)
+    # setting updates to record if given else all local model data
+    updates = {}
+    if record?.id
+      updates[record.id] = record.attributes()
     else
-      updates = {}
-      for obj in @all()
-        updates[obj.id] = obj.attributes()
-      @fbref.update(updates).then ->
-        console.log('firebase update', updates)
-        u_deferred.resolve()
+      for model in @all()
+        updates[model.id] = model.attributes()
+    # do the updates!
+    tempRef.update(updates).then ->
+      console.log('firebase update', updates)
+      u_deferred.resolve()
+    # give 'em the promise!
     promise
 
   delete: (record = {}, options = {}) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
+      if options?.child then @fbref = @fbref.child(record.id)
     d_deferred = $.Deferred()
     promise  = d_deferred.promise()
-    if record.id
-      @fbref.child(record.id).remove()
-      .then ->
-        console.log('firebase delete record')
-        d_deferred.resolve()
-      .catch (error) ->
-        console.log('firebase delete record error', error)
-        d_deferred.reject(error)
+    # setting ref depending on if model is a singleton and if record was passed
+    tempRef = @fbref
+    if not options?.child and record?.id
+      tempRef = @fbref.child(record.id)
+    # setting updates to record if given else all local model data
+    updates = {}
+    if record?.id
+      updates[record.id] = null
     else
-      @fbref.remove()
-      .then ->
-        console.log('firebase delete all')
-        d_deferred.resolve()
-      .catch (error) ->
-        console.log('firebase delete all error', error)
-        d_deferred.reject(error)
+      for model in @all()
+        updates[model.id] = null
+    tempRef.update(updates)
+    .then ->
+      console.log('firebase delete', updates)
+      d_deferred.resolve()
+    .catch (error) ->
+      console.log('firebase delete error', error, updates)
+      d_deferred.reject(error)
     promise
 
 class User
