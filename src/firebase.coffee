@@ -61,7 +61,7 @@ Model =
     @fbref.on 'value', (data) =>
       records = []
       if options?.child
-        records.push(data.val())
+        records = data.val()
       else
         data.forEach (child) ->
           if options?.where
@@ -69,10 +69,10 @@ Model =
               if child.val()[key][value]
                 records.push(child.val())
           else records.push(child.val())
-        false # must return false or enumeration will stop after first child
+          false # must return false or enumeration will stop after first child
       @refresh(records or [], options)
-      l_deferred.resolve(records)
       console.log('firebase fetch', records)
+      l_deferred.resolve(records)
     promise
 
   fetchOnce: (options = {}) ->
@@ -92,18 +92,18 @@ Model =
               if child.val()[key][value]
                 records.push(child.val())
           else records.push(child.val())
-        false # must return false or enumeration will stop after first child
+          false # must return false or enumeration will stop after first child
       @refresh(records or [], options)
       l_deferred.resolve(records)
       console.log('firebase fetch once', records)
     promise
 
-  off: =>
+  off: ->
     if @fbref
       @fbref.off()
       delete @fbref
 
-  push: (record) =>
+  push: (record) ->
     unless @fbref
       @fbref = firebase.database().ref(@ref)
     p_deferred = $.Deferred()
@@ -128,7 +128,7 @@ Model =
     # setting updates to record if given else all local model data
     updates = {}
     if record?.id
-      updates[record.id] = record.attributes()
+      updates = record.attributes()
     else
       for model in @all()
         updates[model.id] = model.attributes()
@@ -149,14 +149,7 @@ Model =
     tempRef = @fbref
     if not options?.child and record?.id
       tempRef = @fbref.child(record.id)
-    # setting updates to record if given else all local model data
-    updates = {}
-    if record?.id
-      updates[record.id] = null
-    else
-      for model in @all()
-        updates[model.id] = null
-    tempRef.update(updates)
+    tempRef.remove()
     .then ->
       console.log('firebase delete', updates)
       d_deferred.resolve()
